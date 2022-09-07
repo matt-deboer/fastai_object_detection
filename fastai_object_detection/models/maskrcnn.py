@@ -6,13 +6,14 @@ __all__ = ['get_maskrcnn_model', 'maskrcnn_resnet18', 'maskrcnn_resnet34', 'mask
 # Cell
 
 from torchvision.models.detection.backbone_utils import resnet_fpn_backbone
+from torchvision.models import resnet
 from torch.hub import load_state_dict_from_url
 from torchvision.models.detection.anchor_utils import AnchorGenerator
 from torchvision.models.detection import MaskRCNN
 from torchvision.ops.misc import FrozenBatchNorm2d
 from functools import partial
 from fastai.vision.all import delegates
-import importlib
+
 # Cell
 #hide
 
@@ -31,11 +32,15 @@ def get_maskrcnn_model(arch_str, num_classes, pretrained=False, pretrained_backb
     #if pretrained: pretrained_backbone = False
     backbone_weights = None
     if pretrained_backbone:
-        import importlib
-        resnet_sz = arch_str.replace('resnet', '')
-        weights_module = importlib.import_module(f"torchvision.models.resnet.ResNet{resnet_sz}_Weights", fromlist=[''])
-        backbone_weights=weights_module.DEFAULT
-    backbone = resnet_fpn_backbone(arch_str, weights=backbone_weights, trainable_layers=trainable_layers)
+        if arch_str.startswith('resnet'):
+            resnet_sz = arch_str.replace('resnet', '')
+            wm = getattr(resnet, f"ResNet{resnet_sz}_Weights")
+            backbone_weights=wm.DEFAULT
+        else:
+            import sys
+            print(f"WARNING: unsupported weights for arch: {arch_str}", 
+                  file=sys.stderr)
+    backbone = resnet_fpn_backbone(backbone_name=arch_str, weights=backbone_weights, trainable_layers=trainable_layers)
     model = MaskRCNN(backbone,
                      num_classes,
                      image_mean = [0.0, 0.0, 0.0], # already normalized by fastai
