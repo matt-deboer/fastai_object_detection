@@ -12,9 +12,10 @@ from torchvision.models.detection import MaskRCNN
 from torchvision.ops.misc import FrozenBatchNorm2d
 from functools import partial
 from fastai.vision.all import delegates
-
+import importlib
 # Cell
 #hide
+
 
 _model_urls = {
     'maskrcnn_resnet50_fpn_coco':
@@ -28,8 +29,13 @@ def get_maskrcnn_model(arch_str, num_classes, pretrained=False, pretrained_backb
                  trainable_layers=5, **kwargs):
 
     #if pretrained: pretrained_backbone = False
-
-    backbone = resnet_fpn_backbone(arch_str, pretrained=pretrained_backbone, trainable_layers=trainable_layers)
+    backbone_weights = None
+    if pretrained_backbone:
+        import importlib
+        resnet_sz = arch_str.replace('resnet', '')
+        weights_module = importlib.import_module(f"torchvision.models.resnet.ResNet{resnet_sz}_Weights", fromlist=[''])
+        backbone_weights=weights_module.DEFAULT
+    backbone = resnet_fpn_backbone(arch_str, weights=backbone_weights, trainable_layers=trainable_layers)
     model = MaskRCNN(backbone,
                      num_classes,
                      image_mean = [0.0, 0.0, 0.0], # already normalized by fastai
